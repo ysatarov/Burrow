@@ -49,6 +49,13 @@ type Coordinator struct {
 func (zc *Coordinator) Configure() {
 	zc.Log.Info("configuring")
 
+	viper.SetDefault("zookeeper.enabled", false)
+
+	if !viper.GetBool("zookeeper.enabled") {
+		zc.Log.Info("zookeeper is disabled")
+		return
+	}
+
 	// if zookeeper.tls has been set, use the TLS connect function otherwise use default connect
 	if zc.connectFunc == nil && viper.IsSet("zookeeper.tls") {
 		zc.connectFunc = helpers.ZookeeperConnectTLS
@@ -81,6 +88,11 @@ func (zc *Coordinator) Configure() {
 func (zc *Coordinator) Start() error {
 	zc.Log.Info("starting")
 
+	if !viper.GetBool("zookeeper.enabled") {
+		zc.Log.Info("zookeeper is disabled")
+		return nil
+	}
+
 	// This ZK client will be shared by other parts of Burrow for things like locks
 	// NOTE - samuel/go-zookeeper does not support chroot, so we pass along the configured root path in config
 	zkConn, connEventChan, err := zc.connectFunc(zc.servers, viper.GetDuration("zookeeper.timeout")*time.Second, zc.Log)
@@ -109,6 +121,11 @@ func (zc *Coordinator) Start() error {
 // will because the event channel will be closed).
 func (zc *Coordinator) Stop() error {
 	zc.Log.Info("stopping")
+
+	if !viper.GetBool("zookeeper.enabled") {
+		zc.Log.Info("zookeeper is disabled")
+		return nil
+	}
 
 	// This will close the event channel, closing the mainLoop
 	zc.App.Zookeeper.Close()

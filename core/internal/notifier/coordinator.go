@@ -270,7 +270,11 @@ func (nc *Coordinator) Start() error {
 	nc.groupRefresh.Start()
 
 	// Run a goroutine to manage whether or not we're performing evaluations
-	go nc.manageEvalLoop()
+	if !viper.GetBool("zookeeper.enabled") {
+		go nc.manageEvalLoopWithoutZK()
+	} else {
+		go nc.manageEvalLoop()
+	}
 
 	// Run our main loop to watch tickers and take actions
 	nc.running.Add(1)
@@ -294,6 +298,13 @@ func (nc *Coordinator) Stop() error {
 	// The individual notifier modules can choose whether or not to implement a wait in the Stop routine
 	helpers.StopCoordinatorModules(nc.modules)
 	return nil
+}
+
+func (nc *Coordinator) manageEvalLoopWithoutZK() {
+	nc.doEvaluations = true
+	nc.running.Add(1)
+	go nc.sendEvaluatorRequests()
+	nc.Log.Info("evaluations started")
 }
 
 func (nc *Coordinator) manageEvalLoop() {
@@ -371,7 +382,7 @@ func (nc *Coordinator) sendEvaluatorRequests() {
 			consumerGroup.Lock.RLock()
 			for consumer, groupInfo := range consumerGroup.Groups {
 				if groupInfo.LastEval.Before(sendBefore) {
-					nc.Log.Debug("Evaluating group", zap.String("group", consumer))
+					nc.Log.Info("Evaluating group", zap.String("group", consumer))
 					go func(sendCluster string, sendConsumer string) {
 						nc.App.EvaluatorChannel <- &protocol.EvaluatorRequest{
 							Reply:   nc.evaluatorResponse,

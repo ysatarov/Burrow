@@ -25,3 +25,6 @@ lint:
 
 test:
 	$(GOTEST) ./...
+
+centos7:
+	docker run --rm -v "$$PWD":/usr/src/burrow -w /usr/src/burrow $$IMAGE go mod tidy && go build -v
