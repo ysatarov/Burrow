@@ -27,4 +27,5 @@ test:
 	$(GOTEST) ./...
 
 centos7:
-	docker run --rm -v "$$PWD":/usr/src/burrow -w /usr/src/burrow $$IMAGE go mod tidy && go build -v
+	GOOS=linux GOARCH=amd64 go mod tidy
+	GOOS=linux GOARCH=amd64 go build -v
